@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.env
+crime_detection/models/*.pth
+crime_detection/models/*.pt
+node_modules/
+.vscode/
