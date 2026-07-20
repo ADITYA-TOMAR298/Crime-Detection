@@ -9,44 +9,59 @@ import ProcessingCard from "./ProcessingCard";
 import AlertsPanel from "./AlertsPanel";
 import Timeline from "./Timeline";
 
+import AlertPopup from "../AlertPopup";
+import IncidentHistory from "../IncidentHistory";
+
 export default function DashboardLayout() {
-  return (
-    <div className="min-h-screen bg-slate-950 text-white">
 
-      <Header />
+    return (
 
-      <div className="flex">
+        <div className="min-h-screen bg-slate-950 text-white">
 
-        <Sidebar />
+            <AlertPopup />
 
-        <main className="flex-1 p-6 overflow-y-auto">
+            <Header />
 
-          <CameraFeed />
+            <div className="flex">
 
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mt-6">
+                <Sidebar />
 
-            <PredictionCard />
+                <main className="flex-1 p-6 overflow-y-auto">
 
-            <ConfidenceCard />
+                    <CameraFeed />
 
-            <ProcessingCard />
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mt-6">
 
-            <StatusCard />
+                        <PredictionCard />
 
-          </div>
+                        <ConfidenceCard />
 
-          <div className="grid xl:grid-cols-2 gap-6 mt-6">
+                        <ProcessingCard />
 
-            <AlertsPanel />
+                        <StatusCard />
 
-            <Timeline />
+                    </div>
 
-          </div>
+                    <div className="grid xl:grid-cols-2 gap-6 mt-6">
 
-        </main>
+                        <AlertsPanel />
 
-      </div>
+                        <Timeline />
 
-    </div>
-  );
+                    </div>
+
+                    <div className="mt-6">
+
+                        <IncidentHistory />
+
+                    </div>
+
+                </main>
+
+            </div>
+
+        </div>
+
+    );
+
 }

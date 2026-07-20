@@ -1,10 +1,11 @@
 import {
   LayoutDashboard,
   History,
-  Bell,
-  Settings,
+  Camera,
   User,
+  LogOut,
 } from "lucide-react";
+import { NavLink } from "react-router-dom";
 
 export default function Sidebar() {
 
@@ -12,26 +13,25 @@ export default function Sidebar() {
 
     {
       title: "Dashboard",
+      path: "/dashboard",
       icon: LayoutDashboard,
     },
 
     {
       title: "History",
+      path: "/history",
       icon: History,
     },
 
     {
-      title: "Alerts",
-      icon: Bell,
-    },
-
-    {
-      title: "Settings",
-      icon: Settings,
+      title: "Camera Setup",
+      path: "/camera-setup",
+      icon: Camera,
     },
 
     {
       title: "Profile",
+      path: "/profile",
       icon: User,
     },
 
@@ -39,24 +39,41 @@ export default function Sidebar() {
 
   return (
 
-    <aside className="w-72 border-r border-slate-800 min-h-[calc(100vh-80px)] bg-slate-900">
+    <aside className="w-72 bg-slate-900 border-r border-slate-800 min-h-[calc(100vh-80px)]">
 
       <div className="p-6">
 
         {menus.map((menu) => (
 
-          <button
+          <NavLink
             key={menu.title}
-            className="w-full flex items-center gap-4 p-4 rounded-xl hover:bg-slate-800 transition mb-2"
+            to={menu.path}
+            className={({ isActive }) =>
+              `flex items-center gap-4 p-4 rounded-xl mb-2 transition ${
+                isActive
+                  ? "bg-red-600 text-white"
+                  : "hover:bg-slate-800"
+              }`
+            }
           >
 
             <menu.icon size={22} />
 
             {menu.title}
 
-          </button>
+          </NavLink>
 
         ))}
+
+        <button
+          className="mt-8 flex items-center gap-4 p-4 rounded-xl hover:bg-slate-800 w-full"
+        >
+
+          <LogOut size={22} />
+
+          Logout
+
+        </button>
 
       </div>
 
