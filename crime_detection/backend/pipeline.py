@@ -8,6 +8,7 @@ from backend.inference import detector
 from backend.camera import Camera
 from backend.shared import shared
 from backend.logger import logger
+from backend.incident_manager import incident_manager
 
 
 class CrimeDetectionPipeline:
@@ -102,6 +103,10 @@ class CrimeDetectionPipeline:
                     confidence=result["confidence"],
                     class_id=result["class_id"],
                     processing_time=processing,
+                )
+                incident_manager.process_prediction(
+                    prediction=result["prediction"],
+                    confidence=result["confidence"]
                 )
 
             except Exception:

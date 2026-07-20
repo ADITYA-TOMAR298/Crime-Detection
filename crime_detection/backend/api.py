@@ -10,6 +10,14 @@ from fastapi.responses import StreamingResponse
 from backend.pipeline import CrimeDetectionPipeline
 from backend.shared import shared
 
+from fastapi import Depends
+from sqlalchemy.orm import Session
+
+from backend.database import get_db
+from backend.models import Incident
+
+from fastapi.staticfiles import StaticFiles
+
 pipeline = CrimeDetectionPipeline()
 
 
@@ -34,6 +42,12 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+)
+
+app.mount(
+    "/snapshots",
+    StaticFiles(directory="snapshots"),
+    name="snapshots",
 )
 
 
@@ -141,3 +155,83 @@ def snapshot():
         content=buffer.tobytes(),
         media_type="image/jpeg",
     )
+
+@app.get("/active_incident")
+def active_incident(
+    db: Session = Depends(get_db)
+):
+
+    incident = (
+        db.query(Incident)
+        .filter(
+            Incident.status == "ACTIVE"
+        )
+        .first()
+    )
+
+    if incident is None:
+
+        return {
+            "active": False
+        }
+
+    return {
+
+        "active": True,
+
+        "id": incident.id,
+
+        "type": incident.incident_type,
+
+        "confidence": incident.confidence,
+
+        "snapshot": (
+            f"http://localhost:8000/{incident.snapshot_path}"
+            if incident.snapshot_path
+            else None
+        ),
+
+        "created_at": incident.created_at,
+
+        "acknowledged": incident.acknowledged,
+
+    }
+
+@app.get("/incidents")
+def incidents(
+    db: Session = Depends(get_db)
+):
+
+    return (
+    db.query(Incident)
+    .order_by(
+        Incident.created_at.desc()
+    )
+    .limit(50)
+    .all()
+)
+
+@app.post("/incident/{incident_id}/acknowledge")
+def acknowledge(
+    incident_id: int,
+    db: Session = Depends(get_db),
+):
+
+    incident = db.get(
+        Incident,
+        incident_id,
+    )
+
+    if incident is None:
+
+        return {
+            "success": False
+        }
+
+    incident.acknowledged = True
+
+    db.commit()
+
+    return {
+        "success": True
+    }
