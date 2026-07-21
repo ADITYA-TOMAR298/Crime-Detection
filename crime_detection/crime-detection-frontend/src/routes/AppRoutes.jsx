@@ -9,6 +9,7 @@ import History from "../pages/History/History";
 // import Alerts from "../pages/Alerts/Alerts";
 // import Settings from "../pages/Settings/Settings";
 import Profile from "../pages/Profile/Profile";
+import Criminals from "../pages/Criminals/Criminals";
 
 export default function AppRoutes() {
   return (
@@ -22,6 +23,7 @@ export default function AppRoutes() {
       {/* <Route path="/alerts" element={<Alerts />} /> */}
       {/* <Route path="/settings" element={<Settings />} /> */}
       <Route path="/profile" element={<Profile />} />
+      <Route path="/criminals" element={<Criminals />} />
     </Routes>
   );
 }

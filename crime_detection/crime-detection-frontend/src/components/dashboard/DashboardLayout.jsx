@@ -8,6 +8,7 @@ import StatusCard from "./StatusCard";
 import ProcessingCard from "./ProcessingCard";
 import AlertsPanel from "./AlertsPanel";
 import Timeline from "./Timeline";
+import CriminalMatchPopup from "./CriminalMatchPopup";
 
 // import AlertPopup from "../AlertPopup";
 // import IncidentHistory from "../IncidentHistory";
@@ -18,7 +19,7 @@ export default function DashboardLayout() {
 
         <div className="min-h-screen bg-slate-950 text-white">
 
-            {/* <AlertPopup /> */}
+            <CriminalMatchPopup />
 
             <Header />
 

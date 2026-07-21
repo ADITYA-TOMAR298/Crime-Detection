@@ -3,6 +3,7 @@ import {
   History,
   Camera,
   User,
+  UserRoundPlus,
   LogOut,
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
@@ -49,6 +50,12 @@ export default function Sidebar() {
       title: "Profile",
       path: "/profile",
       icon: User,
+    },
+
+    {
+      title: "Add Criminal Information",
+      path: "/criminals",
+      icon: UserRoundPlus,
     },
 
   ];

@@ -1,11 +1,13 @@
 from contextlib import asynccontextmanager
 import time
+from pathlib import Path
+from uuid import uuid4
 import cv2
 import threading
 
 from fastapi.middleware.cors import CORSMiddleware
 
-from fastapi import FastAPI, Response
+from fastapi import FastAPI, Response, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 
 from backend.pipeline import CrimeDetectionPipeline
@@ -14,8 +16,8 @@ from backend.shared import shared
 from fastapi import Depends
 from sqlalchemy.orm import Session
 
-from backend.database import get_db
-from backend.models import Incident
+from backend.database import engine, get_db
+from backend.models import Base, Incident, Criminal, CriminalPhoto, CriminalMatch
 from backend.models import User
 from backend.alert_service import alert_service
 from pydantic import BaseModel
@@ -36,6 +38,7 @@ class OnboardingProfile(BaseModel):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    Base.metadata.create_all(bind=engine)
     pipeline.start()
     yield
     pipeline.stop()
@@ -62,6 +65,10 @@ app.mount(
     StaticFiles(directory="snapshots"),
     name="snapshots",
 )
+
+PHOTO_DIRECTORY = Path("criminal_photos")
+PHOTO_DIRECTORY.mkdir(exist_ok=True)
+app.mount("/criminal_photos", StaticFiles(directory=str(PHOTO_DIRECTORY)), name="criminal_photos")
 
 
 @app.get("/")
@@ -119,6 +126,62 @@ def get_user_profile(firebase_uid: str, db: Session = Depends(get_db)):
         "emergency_email": user.emergency_email,
         "created_at": user.created_at,
     }
+
+
+def criminal_payload(criminal: Criminal):
+    return {
+        "id": criminal.id,
+        "name": criminal.name,
+        "phone": criminal.phone,
+        "address": criminal.address,
+        "past_crime": criminal.past_crime,
+        "created_at": criminal.created_at,
+        "photos": [
+            {"id": photo.id, "url": f"http://localhost:8000/{photo.photo_path}"}
+            for photo in criminal.photos
+        ],
+    }
+
+
+@app.get("/criminals")
+def list_criminals(db: Session = Depends(get_db)):
+    return [criminal_payload(criminal) for criminal in db.query(Criminal).order_by(Criminal.created_at.desc()).all()]
+
+
+@app.post("/criminals", status_code=201)
+async def add_criminal(
+    name: str = Form(...),
+    phone: str | None = Form(None),
+    address: str | None = Form(None),
+    past_crime: str | None = Form(None),
+    photos: list[UploadFile] = File(...),
+    db: Session = Depends(get_db),
+):
+    valid_photos = [photo for photo in photos if photo.filename]
+    if not valid_photos:
+        raise HTTPException(status_code=422, detail="At least one photo is required.")
+
+    criminal = Criminal(name=name.strip(), phone=phone or None, address=address or None, past_crime=past_crime or None)
+    db.add(criminal)
+    db.flush()
+    try:
+        for photo in valid_photos:
+            if photo.content_type not in {"image/jpeg", "image/png", "image/webp"}:
+                raise HTTPException(status_code=415, detail="Photos must be JPG, PNG, or WEBP images.")
+            extension = Path(photo.filename).suffix.lower() or ".jpg"
+            filename = f"{criminal.id}_{uuid4().hex}{extension}"
+            destination = PHOTO_DIRECTORY / filename
+            contents = await photo.read()
+            if not contents:
+                raise HTTPException(status_code=422, detail="One of the selected photos is empty.")
+            destination.write_bytes(contents)
+            db.add(CriminalPhoto(criminal_id=criminal.id, photo_path=f"criminal_photos/{filename}"))
+        db.commit()
+        db.refresh(criminal)
+        return criminal_payload(criminal)
+    except Exception:
+        db.rollback()
+        raise
 
 
 @app.get("/status")
@@ -290,4 +353,25 @@ def acknowledge(
 
     return {
         "success": True
+    }
+
+
+@app.get("/criminal_matches/active")
+def active_criminal_match(db: Session = Depends(get_db)):
+    match = (
+        db.query(CriminalMatch)
+        .join(Incident, CriminalMatch.incident_id == Incident.id)
+        .filter(Incident.status == "ACTIVE")
+        .order_by(CriminalMatch.created_at.desc())
+        .first()
+    )
+    if match is None:
+        return {"found": False}
+    criminal = db.get(Criminal, match.criminal_id)
+    return {
+        "found": True,
+        "match_id": match.id,
+        "incident_id": match.incident_id,
+        "confidence": match.confidence,
+        "criminal": criminal_payload(criminal),
     }

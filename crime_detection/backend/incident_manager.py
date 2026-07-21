@@ -7,7 +7,9 @@ from backend.shared import shared
 
 from backend.database import SessionLocal
 from backend.models import Incident
+from backend.models import Criminal, CriminalMatch
 from backend.alert_service import alert_service
+from backend.face_matcher import face_matcher
 
 
 class IncidentManager:
@@ -146,6 +148,10 @@ class IncidentManager:
                 daemon=True,
             ).start()
 
+            # Only run face matching once a crime/anomaly has been confirmed.
+            # A dashboard operator can then see a clear "found in database" alert.
+            self.find_criminal_match(db, incident, snapshot)
+
             print(
                 f"🚨 Incident Created #{incident.id}"
             )
@@ -153,6 +159,26 @@ class IncidentManager:
         finally:
 
             db.close()
+
+    def find_criminal_match(self, db, incident, snapshot_path):
+        frame = cv2.imread(snapshot_path) if snapshot_path else None
+        if frame is None:
+            return
+        best = None
+        for criminal in db.query(Criminal).all():
+            photo_paths = [photo.photo_path for photo in criminal.photos]
+            score, _ = face_matcher.match(frame, photo_paths)
+            # ORB face feature matching is intentionally conservative.
+            if score >= 0.12 and (best is None or score > best[1]):
+                best = (criminal, score)
+        if best:
+            db.add(CriminalMatch(
+                incident_id=incident.id,
+                criminal_id=best[0].id,
+                confidence=best[1],
+                snapshot_path=snapshot_path,
+            ))
+            db.commit()
 
 
 incident_manager = IncidentManager()
