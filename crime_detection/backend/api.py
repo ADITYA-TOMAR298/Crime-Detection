@@ -104,6 +104,23 @@ def save_onboarding(profile: OnboardingProfile, db: Session = Depends(get_db)):
     return {"success": True, "is_new": is_new}
 
 
+@app.get("/users/{firebase_uid}")
+def get_user_profile(firebase_uid: str, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.firebase_uid == firebase_uid).first()
+    if user is None:
+        return Response(status_code=404)
+
+    return {
+        "firebase_uid": user.firebase_uid,
+        "name": user.name,
+        "email": user.email,
+        "phone": user.phone,
+        "emergency_phone": user.emergency_phone,
+        "emergency_email": user.emergency_email,
+        "created_at": user.created_at,
+    }
+
+
 @app.get("/status")
 def status():
 

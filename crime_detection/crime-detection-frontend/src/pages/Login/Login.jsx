@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 
 import useAuth from "../../hooks/useAuth";
 import authService from "../../services/authService";
+import userService from "../../services/userService";
 
 export default function Login() {
 
@@ -29,7 +30,17 @@ export default function Login() {
 
       });
 
-      navigate("/onboarding");
+      try {
+        await userService.getProfile(firebaseUser.uid);
+        navigate("/dashboard");
+      } catch (profileError) {
+        if (profileError.response?.status === 404) {
+          navigate("/onboarding");
+        } else {
+          console.error(profileError);
+          alert("Unable to load your saved setup. Please try again.");
+        }
+      }
 
     }
 

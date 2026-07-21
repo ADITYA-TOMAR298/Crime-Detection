@@ -6,8 +6,24 @@ import {
   LogOut,
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import useAuth from "../../hooks/useAuth";
+import authService from "../../services/authService";
 
 export default function Sidebar() {
+  const navigate = useNavigate();
+  const { setUser } = useAuth();
+
+  const handleLogout = async () => {
+    try {
+      await authService.logout();
+      setUser(null);
+      navigate("/");
+    } catch (error) {
+      console.error(error);
+      alert("Logout failed. Please try again.");
+    }
+  };
 
   const menus = [
 
@@ -66,6 +82,7 @@ export default function Sidebar() {
         ))}
 
         <button
+          onClick={handleLogout}
           className="mt-8 flex items-center gap-4 p-4 rounded-xl hover:bg-slate-800 w-full"
         >
 
