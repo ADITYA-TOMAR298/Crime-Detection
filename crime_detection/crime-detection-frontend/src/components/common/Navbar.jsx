@@ -17,7 +17,11 @@ export default function Navbar() {
           </span>
         </Link>
 
-        <div className="flex gap-8 text-slate-300">
+        <div className="flex items-center gap-5 text-slate-300 sm:gap-8">
+
+          <a href="#home" className="hover:text-white">
+            Home
+          </a>
 
           <a href="#features" className="hover:text-white">
             Features
@@ -29,7 +33,7 @@ export default function Navbar() {
 
           <Link
             to="/login"
-            className="bg-red-600 px-5 py-2 rounded-lg hover:bg-red-700 transition"
+            className="hover:text-white transition"
           >
             Login
           </Link>

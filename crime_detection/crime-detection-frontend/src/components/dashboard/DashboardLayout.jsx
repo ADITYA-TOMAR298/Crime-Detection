@@ -18,7 +18,7 @@ export default function DashboardLayout() {
 
         <div className="min-h-screen bg-slate-950 text-white">
 
-            <AlertPopup />
+            {/* <AlertPopup /> */}
 
             <Header />
 
@@ -52,7 +52,7 @@ export default function DashboardLayout() {
 
                     <div className="mt-6">
 
-                        <IncidentHistory />
+                        {/* <IncidentHistory /> */}
 
                     </div>
 
