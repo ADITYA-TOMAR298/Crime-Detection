@@ -16,18 +16,25 @@ from backend.shared import shared
 class Camera:
 
     def __init__(self):
+        self.cap = None
+        self.thread = None
+        self.frame_queue = queue.Queue(maxsize=QUEUE_SIZE)
+
+        # Cloud services have no physical webcam.  Keep the API healthy until
+        # an RTSP stream is provided through CAMERA_SOURCE.
+        if CAMERA_SOURCE is None:
+            return
 
         self.cap = cv2.VideoCapture(CAMERA_SOURCE)
-
         if not self.cap.isOpened():
-            raise RuntimeError("Unable to open camera.")
+            self.cap.release()
+            self.cap = None
+            return
 
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, CAMERA_WIDTH)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, CAMERA_HEIGHT)
 
         shared.camera_connected = True
-
-        self.frame_queue = queue.Queue(maxsize=QUEUE_SIZE)
 
         self.thread = threading.Thread(
             target=self._capture_loop,
@@ -35,8 +42,8 @@ class Camera:
         )
 
     def start(self):
-
-        self.thread.start()
+        if self.thread:
+            self.thread.start()
 
     def _capture_loop(self):
 
@@ -64,6 +71,10 @@ class Camera:
 
     def get_frame(self):
 
+        if self.cap is None:
+            time.sleep(0.2)
+            return None
+
         try:
             return self.frame_queue.get(timeout=1)
 
@@ -76,4 +87,5 @@ class Camera:
 
         shared.camera_connected = False
 
-        self.cap.release()
+        if self.cap is not None:
+            self.cap.release()

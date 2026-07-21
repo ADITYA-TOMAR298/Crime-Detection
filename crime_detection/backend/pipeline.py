@@ -9,6 +9,7 @@ from backend.camera import Camera
 from backend.shared import shared
 from backend.logger import logger
 from backend.incident_manager import incident_manager
+from backend.config import PIPELINE_ENABLED
 
 
 class CrimeDetectionPipeline:
@@ -39,6 +40,10 @@ class CrimeDetectionPipeline:
     def start(self):
 
         if self.started:
+            return
+
+        if not PIPELINE_ENABLED:
+            logger.info("Crime detection pipeline is disabled (set PIPELINE_ENABLED=true and CAMERA_SOURCE to enable it)")
             return
 
         shared.running = True

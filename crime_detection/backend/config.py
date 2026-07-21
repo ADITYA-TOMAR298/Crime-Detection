@@ -1,4 +1,5 @@
 from pathlib import Path
+import os
 import torch
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
@@ -31,7 +32,25 @@ CLASS_NAMES = [
     "Anomaly"
 ]
 
-CAMERA_SOURCE = 0
+def _camera_source():
+    """Return an RTSP URL or device number; unset means no camera is attached."""
+    value = os.getenv("CAMERA_SOURCE", "0").strip()
+    if not value or value.lower() in {"none", "disabled"}:
+        return None
+    return int(value) if value.isdigit() else value
+
+
+CAMERA_SOURCE = _camera_source()
+PIPELINE_ENABLED = os.getenv(
+    "PIPELINE_ENABLED",
+    "true" if CAMERA_SOURCE is not None else "false",
+).lower() == "true"
+DATA_DIR = Path(os.getenv("DATA_DIR", ROOT_DIR / "data"))
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+SNAPSHOT_DIR = DATA_DIR / "snapshots"
+PHOTO_DIR = DATA_DIR / "criminal_photos"
+SNAPSHOT_DIR.mkdir(parents=True, exist_ok=True)
+PHOTO_DIR.mkdir(parents=True, exist_ok=True)
 
 CAMERA_WIDTH = 1280
 CAMERA_HEIGHT = 720

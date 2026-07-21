@@ -1,21 +1,23 @@
 import { useEffect, useState } from "react";
 import { getIncidentHistory } from "../../services/incidentService";
+import { API_BASE_URL } from "../../services/api";
 
 export default function History() {
   const [history, setHistory] = useState([]);
 
-  useEffect(() => {
-    loadHistory();
-  }, []);
-
-  async function loadHistory() {
+  const loadHistory = async () => {
     try {
       const data = await getIncidentHistory();
       setHistory(data);
     } catch (err) {
       console.error(err);
     }
-  }
+  };
+
+  useEffect(() => {
+    const timer = setTimeout(() => { void loadHistory(); }, 0);
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
     <div className="min-h-screen bg-slate-950 text-white p-8">
@@ -78,7 +80,7 @@ export default function History() {
             {item.snapshot_path && (
 
               <img
-                src={`http://localhost:8000/${item.snapshot_path}`}
+                src={`${API_BASE_URL}/${item.snapshot_path}`}
                 className="rounded-lg mt-5 w-80"
                 alt="Snapshot"
               />

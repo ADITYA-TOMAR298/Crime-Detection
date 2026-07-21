@@ -1,0 +1,11 @@
+.env
+.git
+.gitignore
+venv/
+data/
+snapshots/
+criminal_photos/
+crime_detection.db
+crime-detection-frontend/
+__pycache__/
+*.pyc

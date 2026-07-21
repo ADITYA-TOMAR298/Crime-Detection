@@ -1,5 +1,6 @@
 from contextlib import asynccontextmanager
 import time
+import os
 from pathlib import Path
 from uuid import uuid4
 import cv2
@@ -7,10 +8,10 @@ import threading
 
 from fastapi.middleware.cors import CORSMiddleware
 
-from fastapi import FastAPI, Response, Depends, File, Form, HTTPException, UploadFile
+from fastapi import FastAPI, Response, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import StreamingResponse
 
-from backend.pipeline import CrimeDetectionPipeline
+from backend.config import PHOTO_DIR, PIPELINE_ENABLED, SNAPSHOT_DIR
 from backend.shared import shared
 
 from fastapi import Depends
@@ -24,7 +25,7 @@ from pydantic import BaseModel
 
 from fastapi.staticfiles import StaticFiles
 
-pipeline = CrimeDetectionPipeline()
+pipeline = None
 
 
 class OnboardingProfile(BaseModel):
@@ -38,10 +39,17 @@ class OnboardingProfile(BaseModel):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    global pipeline
     Base.metadata.create_all(bind=engine)
-    pipeline.start()
+    if PIPELINE_ENABLED:
+        # Defer loading the large PyTorch models until a camera source is
+        # explicitly configured. This keeps Cloud Run health deployments fast.
+        from backend.pipeline import CrimeDetectionPipeline
+        pipeline = CrimeDetectionPipeline()
+        pipeline.start()
     yield
-    pipeline.stop()
+    if pipeline:
+        pipeline.stop()
 
 
 app = FastAPI(
@@ -50,11 +58,11 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+CORS_ORIGINS = [origin.strip() for origin in os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",") if origin.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-    ],
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -62,12 +70,11 @@ app.add_middleware(
 
 app.mount(
     "/snapshots",
-    StaticFiles(directory="snapshots"),
+    StaticFiles(directory=str(SNAPSHOT_DIR)),
     name="snapshots",
 )
 
-PHOTO_DIRECTORY = Path("criminal_photos")
-PHOTO_DIRECTORY.mkdir(exist_ok=True)
+PHOTO_DIRECTORY = PHOTO_DIR
 app.mount("/criminal_photos", StaticFiles(directory=str(PHOTO_DIRECTORY)), name="criminal_photos")
 
 
@@ -128,7 +135,12 @@ def get_user_profile(firebase_uid: str, db: Session = Depends(get_db)):
     }
 
 
-def criminal_payload(criminal: Criminal):
+def public_url(request, path: str):
+    base_url = os.getenv("PUBLIC_API_URL") or str(request.base_url).rstrip("/")
+    return f"{base_url}/{path.lstrip('/')}"
+
+
+def criminal_payload(criminal: Criminal, request):
     return {
         "id": criminal.id,
         "name": criminal.name,
@@ -137,19 +149,20 @@ def criminal_payload(criminal: Criminal):
         "past_crime": criminal.past_crime,
         "created_at": criminal.created_at,
         "photos": [
-            {"id": photo.id, "url": f"http://localhost:8000/{photo.photo_path}"}
+            {"id": photo.id, "url": public_url(request, photo.photo_path)}
             for photo in criminal.photos
         ],
     }
 
 
 @app.get("/criminals")
-def list_criminals(db: Session = Depends(get_db)):
-    return [criminal_payload(criminal) for criminal in db.query(Criminal).order_by(Criminal.created_at.desc()).all()]
+def list_criminals(request: Request, db: Session = Depends(get_db)):
+    return [criminal_payload(criminal, request) for criminal in db.query(Criminal).order_by(Criminal.created_at.desc()).all()]
 
 
 @app.post("/criminals", status_code=201)
 async def add_criminal(
+    request: Request,
     name: str = Form(...),
     phone: str | None = Form(None),
     address: str | None = Form(None),
@@ -178,7 +191,7 @@ async def add_criminal(
             db.add(CriminalPhoto(criminal_id=criminal.id, photo_path=f"criminal_photos/{filename}"))
         db.commit()
         db.refresh(criminal)
-        return criminal_payload(criminal)
+        return criminal_payload(criminal, request)
     except Exception:
         db.rollback()
         raise
@@ -277,6 +290,7 @@ def snapshot():
 
 @app.get("/active_incident")
 def active_incident(
+    request: Request,
     db: Session = Depends(get_db)
 ):
 
@@ -305,7 +319,7 @@ def active_incident(
         "confidence": incident.confidence,
 
         "snapshot": (
-            f"http://localhost:8000/{incident.snapshot_path}"
+            public_url(request, incident.snapshot_path)
             if incident.snapshot_path
             else None
         ),
@@ -357,7 +371,7 @@ def acknowledge(
 
 
 @app.get("/criminal_matches/active")
-def active_criminal_match(db: Session = Depends(get_db)):
+def active_criminal_match(request: Request, db: Session = Depends(get_db)):
     match = (
         db.query(CriminalMatch)
         .join(Incident, CriminalMatch.incident_id == Incident.id)
@@ -373,5 +387,5 @@ def active_criminal_match(db: Session = Depends(get_db)):
         "match_id": match.id,
         "incident_id": match.incident_id,
         "confidence": match.confidence,
-        "criminal": criminal_payload(criminal),
+        "criminal": criminal_payload(criminal, request),
     }

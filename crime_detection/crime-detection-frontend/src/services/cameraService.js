@@ -1,10 +1,12 @@
+import { API_BASE_URL } from "./api";
+
 const cameraService = {
   videoUrl() {
-    return `${import.meta.env.VITE_API_URL}/video_feed`;
+    return `${API_BASE_URL}/video_feed`;
   },
 
   snapshotUrl() {
-    return `${import.meta.env.VITE_API_URL}/snapshot`;
+    return `${API_BASE_URL}/snapshot`;
   },
 };
 

@@ -5,3 +5,7 @@ crime_detection/models/*.pth
 crime_detection/models/*.pt
 node_modules/
 .vscode/
+data/
+crime_detection.db
+snapshots/
+criminal_photos/

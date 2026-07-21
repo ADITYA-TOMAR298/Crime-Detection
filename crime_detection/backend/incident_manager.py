@@ -10,6 +10,7 @@ from backend.models import Incident
 from backend.models import Criminal, CriminalMatch
 from backend.alert_service import alert_service
 from backend.face_matcher import face_matcher
+from backend.config import SNAPSHOT_DIR
 
 
 class IncidentManager:
@@ -21,12 +22,7 @@ class IncidentManager:
         self.anomaly_count = 0
 
         self.confirmation_threshold = 3
-        self.snapshot_dir = "snapshots"
-
-        os.makedirs(
-            self.snapshot_dir,
-            exist_ok=True,
-        )
+        self.snapshot_dir = str(SNAPSHOT_DIR)
     def save_snapshot(self):
         with shared.lock:
 
