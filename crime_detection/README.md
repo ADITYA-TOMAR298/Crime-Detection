@@ -28,4 +28,5 @@ URL before sharing the application publicly.
 API testing. Enable it only when a browser webcam or publicly reachable RTSP
 camera has been configured.
 
-See `RAILWAY_DEPLOYMENT.md` for the complete deployment procedure.
+checking commits
+
